@@ -1,55 +1,9 @@
 #!/usr/bin/env python3
-# PYTHON_PREAMBLE_START_STANDARD:{{{
-
-# Christopher David Cotton (c)
-# http://www.cdcotton.com
-
-# modules needed for preamble
-import importlib
 import os
 from pathlib import Path
 import sys
 
-# Get full real filename
-__fullrealfile__ = os.path.abspath(__file__)
-
-# Function to get git directory containing this file
-def getprojectdir(filename):
-    curlevel = filename
-    while curlevel is not '/':
-        curlevel = os.path.dirname(curlevel)
-        if os.path.exists(curlevel + '/.git/'):
-            return(curlevel + '/')
-    return(None)
-
-# Directory of project
-__projectdir__ = Path(getprojectdir(__fullrealfile__))
-
-# Function to call functions from files by their absolute path.
-# Imports modules if they've not already been imported
-# First argument is filename, second is function name, third is dictionary containing loaded modules.
-modulesdict = {}
-def importattr(modulefilename, func, modulesdict = modulesdict):
-    # get modulefilename as string to prevent problems in <= python3.5 with pathlib -> os
-    modulefilename = str(modulefilename)
-    # if function in this file
-    if modulefilename == __fullrealfile__:
-        return(eval(func))
-    else:
-        # add file to moduledict if not there already
-        if modulefilename not in modulesdict:
-            # check filename exists
-            if not os.path.isfile(modulefilename):
-                raise Exception('Module not exists: ' + modulefilename + '. Function: ' + func + '. Filename called from: ' + __fullrealfile__ + '.')
-            # add directory to path
-            sys.path.append(os.path.dirname(modulefilename))
-            # actually add module to moduledict
-            modulesdict[modulefilename] = importlib.import_module(''.join(os.path.basename(modulefilename).split('.')[: -1]))
-
-        # get the actual function from the file and return it
-        return(getattr(modulesdict[modulefilename], func))
-
-# PYTHON_PREAMBLE_END:}}}
+__projectdir__ = Path(os.path.dirname(os.path.realpath(__file__)) + '/')
 
 import functools
 import numpy as np
@@ -262,7 +216,7 @@ def vf_solveback_discrete(rewardarray_list, Vprime, transmissionarray_list, beta
     Vreversed = [Vprime]
 
     for t in reversed(range(0, T - 1)):
-        V, pol = importattr(__projectdir__ / Path('vf_solveback_1endogstate_func.py'), 'vf_1endogstate_discrete_oneiteration')(rewardarray_list[t], Vreversed[-1], transmissionarray_list[t], beta_list[t], basicchecks = True, t = t, Vfunc = Vfunc_list[t], functiontype = functiontype_list[t])
+        V, pol = vf_1endogstate_discrete_oneiteration(rewardarray_list[t], Vreversed[-1], transmissionarray_list[t], beta_list[t], basicchecks = True, t = t, Vfunc = Vfunc_list[t], functiontype = functiontype_list[t])
 
         polreversed.append(pol)
         Vreversed.append(V)
@@ -298,7 +252,7 @@ def vf_solveback_continuous(inputfunction_list, lastperiodutility, endogstate_li
     if len(beta_list) != T - 1:
         raise ValueError('endogstate_list should be one longer than beta_list.')
 
-    Vprime = importattr(__projectdir__ / Path('vf_solveback_1endogstate_func.py'), 'Vprime_get')(lastperiodutility, endogstate_list[-1], exogstate_list[-1])
+    Vprime = Vprime_get(lastperiodutility, endogstate_list[-1], exogstate_list[-1])
 
     polreversed = []
     Vreversed = [Vprime]
@@ -315,7 +269,7 @@ def vf_solveback_continuous(inputfunction_list, lastperiodutility, endogstate_li
         functiontype_list = ['value-full'] * (T - 1)
 
     for t in reversed(range(0, T - 1)):
-        V, pol = importattr(__projectdir__ / Path('vf_solveback_1endogstate_func.py'), 'vf_1endogstate_continuous_oneiteration')(inputfunction_list[t], Vreversed[-1], endogstate_list[t], endogstate_list[t + 1], exogstate_list[t], exogstate_list[t + 1], transmissionarray_list[t], beta_list[t], basicchecks = True, t = t, boundfunction = boundfunction_list[t], functiontype = functiontype_list[t])
+        V, pol = vf_1endogstate_continuous_oneiteration(inputfunction_list[t], Vreversed[-1], endogstate_list[t], endogstate_list[t + 1], exogstate_list[t], exogstate_list[t + 1], transmissionarray_list[t], beta_list[t], basicchecks = True, t = t, boundfunction = boundfunction_list[t], functiontype = functiontype_list[t])
 
         polreversed.append(pol)
         Vreversed.append(V)
@@ -366,12 +320,15 @@ def dist_solveback(startdist_endog, startdist_exog, endogstate_list, transmissio
         # get the transmission star array
         if transmissionstarmethod is True:
             if discrete is True:
-                transmissionstararray = importattr(__projectdir__ / Path('vfi_1endogstate_func.py'), 'gentransmissionstararray_1endogstate_discrete')(transmissionarray_list[t], pol_list[t], ns1prime = len(endogstate_list[t + 1]))
+                from vfi_1endogstate_func import gentransmissionstararray_1endogstate_discrete
+                transmissionstararray = gentransmissionstararray_1endogstate_discrete(transmissionarray_list[t], pol_list[t], ns1prime = len(endogstate_list[t + 1]))
             else:
                 # need endogstate_{t + 1} since we need to find how the choice of state in the next period can be represented as endogstate_{t + 1}
-                polprobs_t = importattr(__projectdir__ / Path('vfi_1endogstate_func.py'), 'getpolprobs_1endogstate_continuous')(pol_list[t], endogstate_list[t + 1])
+                from vfi_1endogstate_func import getpolprobs_1endogstate_continuous
+                polprobs_t = getpolprobs_1endogstate_continuous(pol_list[t], endogstate_list[t + 1])
 
-                transmissionstararray = importattr(__projectdir__ / Path('vfi_1endogstate_func.py'), 'gentransmissionstararray_1endogstate_polprobs')(transmissionarray_list[t], polprobs_t)
+                from vfi_1endogstate_func import gentransmissionstararray_1endogstate_polprobs
+                transmissionstararray = gentransmissionstararray_1endogstate_polprobs(transmissionarray_list[t], polprobs_t)
 
             # nextperiodfulldist = transmissionstararray.dot(nextperiodfulldist)
             nextperiodfulldist = np.dot(nextperiodfulldist, transmissionstararray)
@@ -380,9 +337,11 @@ def dist_solveback(startdist_endog, startdist_exog, endogstate_list, transmissio
             # uses the separatestates method
             
             if discrete is True:
-                polprobs_t = importattr(__projectdir__ / Path('vfi_1endogstate_func.py'), 'getpolprobs_1endogstate_discrete')(pol_list[t], ns1prime = len(endogstate_list[t + 1]))
+                from vfi_1endogstate_func import getpolprobs_1endogstate_discrete
+                polprobs_t = getpolprobs_1endogstate_discrete(pol_list[t], ns1prime = len(endogstate_list[t + 1]))
             else:
-                polprobs_t = importattr(__projectdir__ / Path('vfi_1endogstate_func.py'), 'getpolprobs_1endogstate_continuous')(pol_list[t], endogstate_list[t + 1])
+                from vfi_1endogstate_func import getpolprobs_1endogstate_continuous
+                polprobs_t = getpolprobs_1endogstate_continuous(pol_list[t], endogstate_list[t + 1])
 
             # now same steps as gentransmissionstararray_1endogstate_polprobs in vfi_1endogstate_func.py
 

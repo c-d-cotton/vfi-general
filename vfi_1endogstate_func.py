@@ -1,55 +1,9 @@
 #!/usr/bin/env python3
-# PYTHON_PREAMBLE_START_STANDARD:{{{
-
-# Christopher David Cotton (c)
-# http://www.cdcotton.com
-
-# modules needed for preamble
-import importlib
 import os
 from pathlib import Path
 import sys
 
-# Get full real filename
-__fullrealfile__ = os.path.abspath(__file__)
-
-# Function to get git directory containing this file
-def getprojectdir(filename):
-    curlevel = filename
-    while curlevel is not '/':
-        curlevel = os.path.dirname(curlevel)
-        if os.path.exists(curlevel + '/.git/'):
-            return(curlevel + '/')
-    return(None)
-
-# Directory of project
-__projectdir__ = Path(getprojectdir(__fullrealfile__))
-
-# Function to call functions from files by their absolute path.
-# Imports modules if they've not already been imported
-# First argument is filename, second is function name, third is dictionary containing loaded modules.
-modulesdict = {}
-def importattr(modulefilename, func, modulesdict = modulesdict):
-    # get modulefilename as string to prevent problems in <= python3.5 with pathlib -> os
-    modulefilename = str(modulefilename)
-    # if function in this file
-    if modulefilename == __fullrealfile__:
-        return(eval(func))
-    else:
-        # add file to moduledict if not there already
-        if modulefilename not in modulesdict:
-            # check filename exists
-            if not os.path.isfile(modulefilename):
-                raise Exception('Module not exists: ' + modulefilename + '. Function: ' + func + '. Filename called from: ' + __fullrealfile__ + '.')
-            # add directory to path
-            sys.path.append(os.path.dirname(modulefilename))
-            # actually add module to moduledict
-            modulesdict[modulefilename] = importlib.import_module(''.join(os.path.basename(modulefilename).split('.')[: -1]))
-
-        # get the actual function from the file and return it
-        return(getattr(modulesdict[modulefilename], func))
-
-# PYTHON_PREAMBLE_END:}}}
+__projectdir__ = Path(os.path.dirname(os.path.realpath(__file__)) + '/')
 
 import copy
 import functools
@@ -305,7 +259,9 @@ def getpolprobs_1endogstate_continuous(pol, endogstatevec):
     for s1 in range(ns1):
         for s2 in range(ns2):
             # returns probability distribution of potential s1' choices
-            polprobs[s1, s2, :] = importattr(__projectdir__ / Path('submodules/python-math-func/dist_func.py'), 'weightvaluediscretevec')(pol[s1, s2], endogstatevec)
+            sys.path.append(str(__projectdir__ / Path('submodules/python-math-func/')))
+            from dist_func import weightvaluediscretevec
+            polprobs[s1, s2, :] = weightvaluediscretevec(pol[s1, s2], endogstatevec)
 
     return(polprobs)
 
@@ -362,7 +318,9 @@ def getstationarydist_1endogstate_full(transmissionstararray, ns1, crit = 1e-9):
     By default only find the aggregated distribution for the first state.
     """
 
-    dist = importattr(__projectdir__ / Path('submodules/python-math-func/markov_func.py'), 'getstationarydist')(transmissionstararray, crit = crit)
+    sys.path.append(str(__projectdir__ / Path('submodules/python-math-func/')))
+    from markov_func import getstationarydist
+    dist = getstationarydist(transmissionstararray, crit = crit)
 
     ns = np.shape(transmissionstararray)[0]
     ns2 = int(ns/ns1)
