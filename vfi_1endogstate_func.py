@@ -335,7 +335,7 @@ def getstationarydist_1endogstate_full(transmissionstararray, ns1, crit = 1e-9):
             
 
 # State Dists - Without Transmissionstararray:{{{1
-def getstationarydist_1endogstate_direct(transmissionarray, polprobs, distinit = None, crit = 1e-9):
+def getstationarydist_1endogstate_direct(transmissionarray, polprobs, distinit = None, crit = 1e-9, transmissionfirst = False):
     """
     getstationarydist_1endogstate_full can take a long time as I have to generate a big matrix and then multiply a lot of times
     This is not necessary because the probability that I end up in a given state is exogenous
@@ -355,12 +355,20 @@ def getstationarydist_1endogstate_direct(transmissionarray, polprobs, distinit =
     newdist = np.empty([ns1, ns2])
 
     while True:
-        # solve for s1', s2 given s1, s2
-        for s2 in range(ns2):
-            newdist[:, s2] = dist[:, s2].dot(polprobs[:, s2, :])
+        if transmissionfirst is True:
+            # solve for s2' given s2
+            newdist = dist.dot(transmissionarray)
 
-        # solve for s1', s2' given s1', s2
-        newdist = newdist.dot(transmissionarray)
+            # solve for s1' given s1, s2'
+            for s2 in range(ns2):
+                newdist[:, s2] = newdist[:, s2].dot(polprobs[:, s2, :])
+        else:
+            # solve for s1' given s1, s2
+            for s2 in range(ns2):
+                newdist[:, s2] = dist[:, s2].dot(polprobs[:, s2, :])
+
+            # solve for s2' given s2
+            newdist = newdist.dot(transmissionarray)
 
         diff = np.max(np.abs(newdist - dist))
 
